@@ -1,0 +1,29 @@
+{
+  "name": "candidata-plus",
+  "version": "2.3.0",
+  "private": true,
+  "description": "Candidata+ 2 — extensão do Chrome que se candidata sozinha às vagas de Candidatura simplificada do LinkedIn, com a IA grátis do Google respondendo pelo seu currículo.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "build": "node scripts/build.mjs",
+    "deliver": "node scripts/build.mjs --deliver",
+    "e2e": "node scripts/build.mjs && node scripts/e2e-fake-linkedin.mjs",
+    "record": "node scripts/build.mjs && node scripts/record-demo.mjs",
+    "zip": "node scripts/build.mjs && node scripts/zip.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.5",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "pdfjs-dist": "6.4.299"
+  }
+}

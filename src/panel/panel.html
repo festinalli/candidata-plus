@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Candidata+ 2</title>
+    <link rel="stylesheet" href="./panel.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <div>
+          <h1>Candidata+ 2 <small id="app-version" style="font-weight: 400; opacity: 0.7"></small></h1>
+          <p class="subtitle">Currículo → Ficha da IA → Candidatura simplificada</p>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="start" role="tab" aria-selected="true">
+        1. Começar
+      </button>
+      <button type="button" class="tab" data-tab="pending" role="tab" aria-selected="false">
+        2. Responda 1 vez <span id="pending-badge" class="badge hidden">0</span>
+      </button>
+      <button type="button" class="tab" data-tab="diary" role="tab" aria-selected="false">
+        3. Diário
+      </button>
+    </nav>
+
+    <main class="container">
+      <!-- BANNER AO VIVO DO ENVIO -->
+      <section id="live-run-banner" class="card live-banner hidden">
+        <div class="live-header">
+          <span id="live-status-pill" class="pill running">Rodando</span>
+          <span id="live-current-job" class="live-job-text">Preparando...</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box ok">
+            <strong id="stat-applied">0</strong>
+            <span>Enviadas</span>
+          </div>
+          <div class="stat-box info">
+            <strong id="stat-simulated">0</strong>
+            <span>Simuladas</span>
+          </div>
+          <div class="stat-box warn">
+            <strong id="stat-needs">0</strong>
+            <span>Faltou resp.</span>
+          </div>
+          <div class="stat-box muted">
+            <strong id="stat-skipped">0</strong>
+            <span>Puladas</span>
+          </div>
+        </div>
+        <div id="live-controls" class="row gap-8 mt-8">
+          <button type="button" id="btn-pause-resume" class="btn secondary flex-1">Pausar</button>
+          <button type="button" id="btn-stop" class="btn danger flex-1">Parar agora</button>
+        </div>
+      </section>
+
+      <!-- ABA 1: COMEÇAR -->
+      <div id="tab-start" class="tab-pane">
+        <!-- PASSO 1: CURRÍCULO E FICHA -->
+        <section class="card">
+          <div class="step-head">
+            <span class="step-num">1</span>
+            <div>
+              <h2>Seu currículo e ficha de conhecimento</h2>
+              <p class="hint">Envie seu PDF uma vez. A IA lê e monta sua ficha para responder os formulários.</p>
+            </div>
+          </div>
+
+          <div class="upload-area">
+            <input type="file" id="resume-file-input" accept=".pdf,.txt" class="hidden" />
+            <button type="button" id="btn-pick-pdf" class="btn primary full">
+              Escolher PDF do currículo
+            </button>
+          </div>
+
+          <div id="resume-status-box" class="status-note muted mt-8">
+            Nenhum currículo enviado ainda.
+          </div>
+
+          <div class="row gap-8 mt-8">
+            <button type="button" id="btn-rebuild-kb" class="btn secondary flex-1">
+              Montar ficha com a IA
+            </button>
+            <button type="button" id="btn-toggle-kb" class="btn secondary flex-1">
+              Ver / Editar ficha
+            </button>
+          </div>
+
+          <!-- EDITOR DA FICHA DE CONHECIMENTO -->
+          <div id="kb-editor" class="kb-editor hidden mt-12">
+            <h3>Ficha de Conhecimento (você pode revisar e ajustar)</h3>
+
+            <div class="field-group">
+              <label for="kb-name">Nome completo</label>
+              <input type="text" id="kb-name" placeholder="Seu nome" />
+            </div>
+
+            <div class="row gap-8">
+              <div class="field-group flex-1">
+                <label for="kb-email">E-mail</label>
+                <input type="email" id="kb-email" placeholder="voce@email.com" />
+              </div>
+              <div class="field-group flex-1">
+                <label for="kb-phone">Celular (só números)</label>
+                <input type="text" id="kb-phone" placeholder="11999999999" />
+              </div>
+            </div>
+
+            <div class="row gap-8">
+              <div class="field-group flex-1">
+                <label for="kb-city">Cidade</label>
+                <input type="text" id="kb-city" placeholder="São Paulo" />
+              </div>
+              <div class="field-group flex-1">
+                <label for="kb-state">Estado</label>
+                <input type="text" id="kb-state" placeholder="SP" />
+              </div>
+            </div>
+
+            <div class="row gap-8">
+              <div class="field-group flex-1">
+                <label for="kb-role">Cargo principal</label>
+                <input type="text" id="kb-role" placeholder="Ex.: Analista Financeiro" />
+              </div>
+              <div class="field-group" style="width: 110px">
+                <label for="kb-years">Anos totais</label>
+                <input type="number" id="kb-years" min="0" step="0.5" placeholder="5" />
+              </div>
+            </div>
+
+            <div class="row gap-8">
+              <div class="field-group flex-1">
+                <label for="kb-salary">Pretensão salarial (R$ só número)</label>
+                <input type="text" id="kb-salary" placeholder="Ex.: 8000" />
+              </div>
+              <div class="field-group flex-1">
+                <label for="kb-current-salary">Salário atual/último (opcional)</label>
+                <input type="text" id="kb-current-salary" placeholder="Ex.: 6500" />
+              </div>
+            </div>
+            <p class="tiny-hint">Dica: O LinkedIn aceita só números nesses campos. Se deixar em branco e uma vaga pedir, ela vai para "Responda 1 vez".</p>
+
+            <div class="row gap-8 mt-8">
+              <div class="field-group flex-1">
+                <label for="kb-notice">Disponibilidade / Aviso prévio</label>
+                <input type="text" id="kb-notice" placeholder="Imediato ou 15 dias" />
+              </div>
+              <div class="field-group flex-1">
+                <label for="kb-relocate">Aceita mudar de cidade?</label>
+                <select id="kb-relocate">
+                  <option value="false">Não</option>
+                  <option value="true">Sim</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="kb-skills">Habilidades e anos de experiência (uma por linha: <code>Nome: anos</code>)</label>
+              <textarea id="kb-skills" rows="5" placeholder="Excel: 6&#10;Python: 3&#10;Gestão de projetos: 4"></textarea>
+            </div>
+
+            <div class="field-group">
+              <label for="kb-languages">Idiomas (um por linha: <code>Idioma: Nível</code>)</label>
+              <textarea id="kb-languages" rows="3" placeholder="Português: Nativo&#10;Inglês: Intermediário"></textarea>
+            </div>
+
+            <div class="field-group">
+              <label for="kb-summary">Resumo profissional</label>
+              <textarea id="kb-summary" rows="3" placeholder="Resumo curto da sua trajetória"></textarea>
+            </div>
+
+            <div class="field-group">
+              <label for="kb-extra">Observações extras para a IA lembrar sempre</label>
+              <textarea id="kb-extra" rows="3" placeholder="Ex.: Aceito PJ ou CLT, tenho CNH B, disponibilidade para horário comercial..."></textarea>
+            </div>
+
+            <details class="mt-8">
+              <summary class="tiny-link">Ver ou colar o texto bruto do currículo</summary>
+              <div class="field-group mt-8">
+                <textarea id="kb-raw-resume" rows="5" placeholder="Se o seu PDF for imagem ou você preferir colar o texto do currículo, cole aqui."></textarea>
+              </div>
+            </details>
+
+            <button type="button" id="btn-save-kb" class="btn primary full mt-8">
+              Salvar ficha de conhecimento
+            </button>
+          </div>
+        </section>
+
+        <!-- PASSO 2: CHAVE DO GOOGLE AI STUDIO -->
+        <section class="card">
+          <div class="step-head">
+            <span class="step-num">2</span>
+            <div>
+              <h2>Chave grátis do Google AI Studio</h2>
+              <p class="hint">
+                Pegue grátis em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>
+                (botão <strong>Create API key</strong>) e cole abaixo.
+              </p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="ai-key-input">Sua chave (começa com AIza...)</label>
+            <div class="row gap-6">
+              <input type="password" id="ai-key-input" class="flex-1" placeholder="AIzaSy..." autocomplete="off" />
+              <button type="button" id="btn-toggle-key-vis" class="btn secondary small">Mostrar</button>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="ai-model-select">Modelo do Google (escolhido automaticamente)</label>
+            <select id="ai-model-select">
+              <option value="">Automático (melhor modelo rápido da conta)</option>
+            </select>
+          </div>
+
+          <p class="tiny-hint">
+            Privacidade: as perguntas, a sua ficha e o texto do currículo vão do seu navegador direto ao Google, com a sua chave, sem nome, e-mail, telefone, links e salário. No plano grátis o Google pode usar o que recebe para melhorar os produtos dele.
+          </p>
+
+          <button type="button" id="btn-save-test-ai" class="btn primary full mt-8">
+            Salvar e testar IA com meu currículo
+          </button>
+
+          <div id="ai-test-output" class="status-note hidden mt-8"></div>
+        </section>
+
+        <!-- PASSO 3: COMEÇAR NO LINKEDIN -->
+        <section class="card">
+          <div class="step-head">
+            <span class="step-num">3</span>
+            <div>
+              <h2>Candidatar nas vagas do LinkedIn</h2>
+              <p class="hint">Aperte Começar. Se você não estiver numa lista de vagas do LinkedIn, a extensão abre a busca sozinha.</p>
+            </div>
+          </div>
+
+          <button type="button" id="btn-open-li-search" class="btn secondary full mb-10">
+            Abrir busca de vagas no LinkedIn (com Candidatura simplificada)
+          </button>
+
+          <div class="field-group">
+            <label>O que fazer quando chegar no fim do formulário?</label>
+            <div class="mode-selector">
+              <label class="mode-option">
+                <input type="radio" name="run-mode" id="mode-real" value="real" checked />
+                <span><strong>Enviar de verdade</strong> (clica em Enviar candidatura)</span>
+              </label>
+              <label class="mode-option">
+                <input type="radio" name="run-mode" id="mode-sim" value="sim" />
+                <span><strong>Só simular</strong> (preenche até a revisão e descarta sem enviar)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="row gap-8">
+            <div class="field-group flex-1">
+              <label for="set-max-jobs">Máximo de vagas</label>
+              <input type="number" id="set-max-jobs" min="1" max="200" value="20" />
+            </div>
+            <div class="field-group flex-1">
+              <label for="set-pace">Ritmo entre envios</label>
+              <select id="set-pace">
+                <option value="2">Rápido (2s)</option>
+                <option value="3" selected>Normal (3s)</option>
+                <option value="8">Calmo (8s)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Modalidades de trabalho que você aceita</label>
+            <div class="row gap-12 wrap">
+              <label class="check-inline"><input type="checkbox" id="wm-remote" checked /> Remoto</label>
+              <label class="check-inline"><input type="checkbox" id="wm-hybrid" checked /> Híbrido</label>
+              <label class="check-inline"><input type="checkbox" id="wm-onsite" checked /> Presencial</label>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="quick-salary">Pretensão salarial (R$, só número)</label>
+            <input type="text" id="quick-salary" inputmode="numeric" placeholder="Ex.: 8000" />
+            <p class="tiny-hint">Muitas vagas perguntam e isso não está no currículo. Fica só no seu navegador: não vai para a IA.</p>
+          </div>
+
+          <label class="check-inline mt-4">
+            <input type="checkbox" id="set-unfollow" checked />
+            Desmarcar "Seguir empresa" na revisão
+          </label>
+
+          <button type="button" id="btn-start-batch" class="btn cta full mt-12">
+            Começar envio automático
+          </button>
+        </section>
+      </div>
+
+      <!-- ABA 2: RESPONDA 1 VEZ & BANCO -->
+      <div id="tab-pending" class="tab-pane hidden">
+        <section class="card">
+          <h2>Perguntas que ficaram sem resposta</h2>
+          <p class="hint">Responda uma única vez aqui. Nas próximas vagas a extensão já preenche sozinha.</p>
+          <div id="pending-list" class="stack mt-8"></div>
+        </section>
+
+        <section class="card">
+          <h2>Adicionar resposta fixa manualmente</h2>
+          <div class="field-group">
+            <label for="new-bank-q">Pergunta (ex.: Pretensão salarial, Possui CNH?)</label>
+            <input type="text" id="new-bank-q" placeholder="Digite a pergunta..." />
+          </div>
+          <div class="field-group">
+            <label for="new-bank-a">Sua resposta</label>
+            <input type="text" id="new-bank-a" placeholder="Digite a resposta..." />
+          </div>
+          <button type="button" id="btn-add-bank" class="btn secondary full">Guardar resposta</button>
+        </section>
+
+        <section class="card">
+          <h2>Respostas já aprendidas (<span id="bank-count">0</span>)</h2>
+          <p class="hint">Inclui o que você respondeu aqui, o que digitou no LinkedIn e o que a IA respondeu.</p>
+          <div id="bank-list" class="stack mt-8"></div>
+        </section>
+      </div>
+
+      <!-- ABA 3: DIÁRIO DO ENVIO -->
+      <div id="tab-diary" class="tab-pane hidden">
+        <section class="card">
+          <h2>IA neste envio</h2>
+          <div id="ai-run-summary" class="status-note muted">
+            Nenhuma rodada executada ainda.
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="row between center">
+            <h2>Diário do envio</h2>
+            <div class="row gap-6">
+              <button type="button" id="btn-copy-diary" class="btn primary small">Copiar o diário</button>
+              <button type="button" id="btn-clear-diary" class="btn secondary small">Limpar</button>
+            </div>
+          </div>
+          <p class="hint">Se algo der errado numa vaga, clique em "Copiar o diário" e cole no chat para diagnóstico exato.</p>
+          <pre id="diary-box" class="diary-box mt-8">O diário aparecerá aqui assim que você iniciar uma rodada.</pre>
+        </section>
+
+        <section class="card">
+          <h2>Vagas percorridas nesta rodada</h2>
+          <div id="jobs-history-list" class="stack mt-8"></div>
+        </section>
+      </div>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module" src="./panel.js"></script>
+  </body>
+</html>

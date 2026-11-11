@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Busca de vagas — demonstração</title>
+    <!--
+      Página de DEMONSTRAÇÃO usada só para gravar o vídeo de como usar (scripts/record-demo.mjs).
+      Imita o jeito de uma busca de vagas com "Candidatura simplificada", com o painel da extensão à direita
+      (no Chrome de verdade ele é o painel lateral). Não é o site real e não usa marca de ninguém.
+    -->
+    <style>
+      :root { --panel: 420px; --blue: #0a66c2; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f3f2ef; color: #1d2226; overflow: hidden; }
+      #candidata-plus-v2-fab { display: none !important; }
+      #top { position: fixed; top: 0; left: 0; right: var(--panel); height: 56px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 16px; padding: 0 24px; }
+      #top .logo { width: 34px; height: 34px; border-radius: 8px; background: #5b6b7a; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+      #top .search { width: 360px; height: 36px; border-radius: 6px; background: #eef3f8; display: flex; align-items: center; padding: 0 14px; color: #444; font-size: 15px; }
+      #top .filter { border: 1px solid #057642; color: #057642; border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+      #demo-tag { margin-left: auto; background: #fff4ce; border: 1px solid #e6c34a; color: #5c4a00; border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 600; }
+      #wrap { position: fixed; top: 56px; left: 0; right: var(--panel); bottom: 0; display: flex; gap: 18px; padding: 18px 24px; }
+      #list { width: 360px; overflow: auto; background: #fff; border-radius: 10px; border: 1px solid #ddd; }
+      #list .head { font-size: 16px; font-weight: 600; padding: 14px 16px; border-bottom: 1px solid #eee; }
+      #list [role='button'] { padding: 13px 16px; border-bottom: 1px solid #eee; cursor: pointer; border-left: 4px solid transparent; }
+      #list [role='button'].sel { background: #eaf3fb; border-left-color: var(--blue); }
+      #list [role='button'] > div:first-child { font-weight: 600; color: #0a4a8a; font-size: 16px; }
+      .co { font-size: 14px; margin-top: 2px; }
+      .loc { font-size: 13px; color: #666; }
+      .ea { font-size: 12px; color: #057642; margin-top: 4px; }
+      .done { font-size: 12px; color: #057642; font-weight: 700; margin-top: 4px; }
+      .close-card { display: none; }
+      .sr { position: absolute; clip: rect(0, 0, 0, 0); width: 1px; height: 1px; overflow: hidden; }
+      #detail { flex: 1; background: #fff; border-radius: 10px; border: 1px solid #ddd; padding: 26px 30px; overflow: auto; }
+      #detail .empty { color: #888; margin-top: 40px; text-align: center; font-size: 15px; }
+      .d-company a { color: #1d2226; text-decoration: none; font-size: 15px; }
+      .d-title { margin: 6px 0; }
+      .d-title a { font-size: 26px; font-weight: 600; color: #1d2226; text-decoration: none; }
+      .d-loc { color: #666; font-size: 15px; }
+      .btn-ea { background: var(--blue); color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font-size: 16px; font-weight: 600; margin-top: 16px; cursor: pointer; }
+      .applied { display: inline-block; margin-top: 16px; color: #057642; font-weight: 700; }
+      .about h2 { font-size: 19px; margin: 28px 0 8px; }
+      .about p { line-height: 1.55; color: #333; font-size: 15px; }
+      #cplus-panel { position: fixed; top: 0; right: 0; width: var(--panel); height: 100%; border: 0; border-left: 1px solid #c8c8c8; background: #fff; }
+      #shade { position: fixed; top: 0; left: 0; right: var(--panel); bottom: 0; background: rgba(0, 0, 0, 0.5); display: none; }
+      dialog { position: fixed; top: 64px; left: calc((100vw - var(--panel)) / 2 - 290px); width: 580px; max-height: calc(100vh - 100px); overflow: auto; margin: 0; border: 0; border-radius: 12px; padding: 0; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); background: #fff; color: #1d2226; }
+      dialog .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid #eee; }
+      dialog h2 { font-size: 19px; margin: 0; }
+      dialog .x { background: none; border: 0; font-size: 22px; cursor: pointer; color: #555; }
+      #form-body { padding: 18px 22px 8px; min-height: 120px; }
+      #form-body > p:first-child { color: #666; font-size: 13px; margin: 0 0 10px; }
+      .step-title { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+      #form-body label, .q { display: block; font-size: 14px; font-weight: 600; margin: 12px 0 5px; }
+      #form-body input[type='text'], #form-body input[type='tel'], #form-body select, #form-body textarea { width: 100%; padding: 9px 10px; border: 1px solid #888; border-radius: 6px; font-size: 15px; font-family: inherit; }
+      #form-body textarea { min-height: 84px; }
+      fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 22px; }
+      fieldset > div { display: flex; align-items: center; gap: 6px; }
+      fieldset > div > div { display: flex; align-items: center; gap: 6px; }
+      fieldset p { margin: 0; font-size: 15px; }
+      .err { color: #b24020; font-size: 13px; font-weight: 600; margin: 4px 0 0; }
+      .hint { color: #666; font-size: 12px; }
+      .resume { border: 1px solid #ccc; border-radius: 8px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
+      .review-sec { border: 1px solid #e5e5e5; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 14px; color: #444; }
+      footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #eee; position: sticky; bottom: 0; background: #fff; }
+      footer button { border-radius: 999px; padding: 8px 18px; font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid var(--blue); background: #fff; color: var(--blue); }
+      footer button:last-child { background: var(--blue); color: #fff; }
+      .small-dlg { padding: 22px 24px; width: 440px; left: calc((100vw - var(--panel)) / 2 - 220px); top: 200px; }
+      .small-dlg h2 { margin: 0 0 8px; }
+      .small-dlg button { margin: 14px 8px 0 0; border-radius: 999px; padding: 8px 18px; font-size: 15px; font-weight: 600; border: 1px solid var(--blue); background: #fff; color: var(--blue); }
+    </style>
+  </head>
+  <body>
+    <div id="top">
+      <div class="logo">V</div>
+      <div class="search">🔎&nbsp; analista de dados</div>
+      <div class="filter">✓ Candidatura simplificada</div>
+      <div id="demo-tag">Página de demonstração</div>
+    </div>
+    <div id="wrap">
+      <div id="list"><div class="head">Vagas para "analista de dados"</div></div>
+      <div id="detail" data-sdui-screen="JobDetails"><div class="empty">Clique numa vaga para ver os detalhes.</div></div>
+    </div>
+    <div id="shade"></div>
+    <iframe id="cplus-panel" title="Painel da Candidata+ 2" src="__PANEL_URL__"></iframe>
+    <script>
+      (() => {
+        const JOBS = [
+          { id: '4100000001', title: 'Analista de Dados Pleno', company: 'Empresa Alfa', loc: 'São Paulo, SP (Híbrido)' },
+          { id: '4100000002', title: 'Analista de BI Sênior', company: 'Empresa Beta', loc: 'Brasil (Remoto)', form: 'beta' },
+          { id: '4100000003', title: 'Cientista de Dados', company: 'Empresa Gama', loc: 'Brasil (Remoto)', form: 'gama' },
+          { id: '4100000004', title: 'Engenheira(o) de Analytics', company: 'Empresa Delta', loc: 'Brasil (Remoto)', form: 'delta' },
+          { id: '4100000005', title: 'Analista de Dados Júnior', company: 'Empresa Ômega', loc: 'Rio de Janeiro, RJ (Presencial)' },
+        ];
+        const list = document.getElementById('list');
+        const detail = document.getElementById('detail');
+        const shade = document.getElementById('shade');
+        const searchUrl = location.pathname + location.search;
+        window.__submitted = [];
+
+        setTimeout(() => {
+          for (const job of JOBS) {
+            const card = document.createElement('div');
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('componentkey', `job-card-component-ref-${job.id}`);
+            card.innerHTML = `<div><span aria-hidden="true">${job.title}</span><span class="sr">${job.title}</span></div>
+              <div class="co">${job.company}</div><div class="loc">${job.loc}</div>
+              <button type="button" class="close-card">Fechar vaga de ${job.title}</button><div class="ea">Candidatura simplificada</div>`;
+            card.addEventListener('click', (ev) => {
+              if (ev.target.closest('button')) return;
+              openJob(job);
+            });
+            job.card = card;
+            list.append(card);
+          }
+        }, 500);
+
+        function openJob(job) {
+          for (const j of JOBS) j.card?.classList.toggle('sel', j === job);
+          history.replaceState(null, '', `${location.pathname}?keywords=analista%20de%20dados&f_AL=true&currentJobId=${job.id}`);
+          setTimeout(() => {
+            detail.innerHTML = '';
+          }, 300);
+          setTimeout(() => renderTop(job), 1100);
+        }
+
+        function renderTop(job) {
+          detail.innerHTML = `<div>
+              <div class="d-company"><a href="/company/${job.company.toLowerCase().replace(/\s+/g, '-')}/">${job.company}</a></div>
+              <p class="d-title"><a href="/jobs/view/${job.id}/">${job.title}</a></p>
+              <div class="d-loc"><span>${job.loc}</span> · há 2 horas · Tempo integral</div>
+              <div>${
+                job.applied
+                  ? '<span class="applied">✓ Candidatura enviada</span>'
+                  : '<button type="button" class="btn-ea" aria-label="Usar a candidatura simplificada para esta vaga"><span>Candidatura simplificada</span></button>'
+              }</div>
+            </div>
+            <div class="about"><h2>Sobre a vaga</h2>
+              <p>Buscamos uma pessoa para transformar dados em decisões: painéis, análises e automações para as áreas de negócio.
+              Experiência com SQL, Python e ferramentas de BI. Trabalho em equipe e comunicação clara.</p></div>`;
+          const btn = detail.querySelector('.btn-ea');
+          if (btn) btn.addEventListener('click', () => openForm(job));
+        }
+
+        function openForm(job) {
+          const dlg = document.createElement('dialog');
+          dlg.setAttribute('data-testid', 'dialog');
+          dlg.setAttribute('aria-labelledby', 'dialog-header');
+          dlg.setAttribute('open', '');
+          dlg.innerHTML = `<div class="dlg-head"><header id="dialog-header"><h2>Candidate-se à empresa ${job.company}</h2></header>
+              <button type="button" class="x" aria-label="Fechar">✕</button></div><div id="form-body"></div>`;
+          document.body.append(dlg);
+          shade.style.display = 'block';
+          history.replaceState(null, '', `/jobs/view/${job.id}/`);
+          dlg.querySelector('[aria-label="Fechar"]').addEventListener('click', () => askDiscard(dlg));
+          setTimeout(() => renderStep(job, dlg, 1), 700);
+        }
+
+        function closeForm(dlg) {
+          dlg.remove();
+          shade.style.display = 'none';
+          history.replaceState(null, '', searchUrl);
+        }
+
+        function askDiscard(form) {
+          if (document.getElementById('ask-discard')) return;
+          setTimeout(() => {
+            const ask = document.createElement('dialog');
+            ask.id = 'ask-discard';
+            ask.className = 'small-dlg';
+            ask.setAttribute('open', '');
+            ask.innerHTML = '<h2>Salvar esta candidatura?</h2><p>Salve para continuar depois.</p><button type="button">Descartar</button><button type="button">Salvar</button>';
+            form.after(ask);
+            const [discard, save] = ask.querySelectorAll('button');
+            discard.addEventListener('click', () => {
+              ask.remove();
+              closeForm(form);
+            });
+            save.addEventListener('click', () => {
+              window.__savedDraft = true;
+            });
+          }, 300);
+        }
+
+        const yesNo = (name, question) => `<div componentkey="g"><p class="q">${question}*</p><fieldset role="radiogroup">
+            <div componentkey="o"><div><div><input id="${name}-s" aria-label="${question}" type="radio" name="${name}"><label for="${name}-s"></label></div><div><p>Sim</p></div></div></div>
+            <div componentkey="o"><div><div><input id="${name}-n" aria-label="${question}" type="radio" name="${name}"><label for="${name}-n"></label></div><div><p>Não</p></div></div></div>
+          </fieldset></div>`;
+        const textQ = (id, question, hint = true) => `<div><p class="q">${question}*</p><div><input required id="${id}" aria-describedby="${id}-h" aria-label="${question}" type="text" value="">${
+          hint ? `<div id="${id}-h"></div>` : ''
+        }</div></div>`;
+
+        const QUESTIONS = {
+          beta: () =>
+            textQ('q-sal', 'Qual sua pretensão salarial?') +
+            textQ('q-py', 'Há quantos anos você já usa Python no trabalho?') +
+            yesNo('pbi', 'Você tem experiência com Power BI?') +
+            `<div><p class="q">Conte em poucas linhas por que esta vaga combina com você.*</p><div><textarea required id="q-why" aria-label="Conte em poucas linhas por que esta vaga combina com você."></textarea></div></div>`,
+          gama: () => textQ('q-sal', 'Qual sua pretensão salarial?') + yesNo('hib', 'Você trabalharia em um modelo híbrido?') + yesNo('cnh', 'Você possui CNH categoria B?'),
+          delta: () =>
+            textQ('q-sal', 'Qual é a sua expectativa de remuneração mensal?') +
+            textQ('q-sql', 'Há quantos anos você trabalha com SQL?') +
+            `<div><p class="q">Qual o seu nível de inglês?*</p><div><select id="q-en" aria-label="Qual o seu nível de inglês?" required><option value="">Selecione</option><option value="b">Básico</option><option value="i">Intermediário</option><option value="a">Avançado</option><option value="f">Fluente</option></select></div></div>`,
+        };
+
+        function renderStep(job, dlg, n) {
+          const body = dlg.querySelector('#form-body');
+          if (!body || !dlg.isConnected) return;
+          let foot = '';
+          if (n === 1) {
+            body.innerHTML = `<p>1 de 4 páginas</p><p class="step-title">Informações de contato</p>
+              <label for="em">E-mail</label><select id="em" required><option value="a" selected>ana.exemplo@email.com</option></select>
+              <label for="cc">Código do país</label><select id="cc" required><option value="br" selected>Brasil (+55)</option></select>
+              <label for="tel">Número de celular</label><input id="tel" type="tel" required value="11900000000">`;
+            foot = '<button type="button">Avançar</button>';
+          } else if (n === 2) {
+            body.innerHTML = `<p>2 de 4 páginas</p><p class="step-title">Currículo</p><p class="q">Currículo*</p>
+              <fieldset role="radiogroup" style="display:block"><div class="resume"><input aria-label="curriculo-ana-exemplo.pdf" type="radio" name="resume-file" checked><span>📄 curriculo-ana-exemplo.pdf</span></div></fieldset>`;
+            foot = '<button type="button">Voltar</button><button type="button">Avançar</button>';
+          } else if (n === 3) {
+            body.innerHTML = `<p>3 de 4 páginas</p><p class="step-title">Perguntas adicionais</p>${QUESTIONS[job.form]()}`;
+            foot = '<button type="button">Voltar</button><button type="button"><span><span>Avaliar</span></span></button>';
+          } else {
+            body.innerHTML = `<p>4 de 4 páginas</p><h3 class="step-title">Revise sua candidatura</h3>
+              <div class="review-sec">Contato: ana.exemplo@email.com · (11) 90000-0000</div>
+              <div class="review-sec">Currículo: curriculo-ana-exemplo.pdf</div>
+              <div><input id="follow" type="checkbox" checked aria-label="Siga a empresa ${job.company} para ficar por dentro das novidades"><label for="follow" style="display:inline;font-weight:400">Siga a empresa ${job.company} para ficar por dentro das novidades</label></div>`;
+            foot = '<button type="button"><span><span>Enviar candidatura</span></span></button>';
+          }
+          dlg.querySelector('footer')?.remove();
+          dlg.insertAdjacentHTML('beforeend', `<footer>${foot}</footer>`);
+          const primary = [...dlg.querySelectorAll('footer button')].pop();
+          primary.addEventListener('click', () => {
+            if (n === 3 && !valid(body)) return;
+            if (n === 4) return setTimeout(() => submit(job, dlg), 700);
+            setTimeout(() => {
+              body.innerHTML = '';
+              dlg.querySelector('footer')?.remove();
+              setTimeout(() => renderStep(job, dlg, n + 1), 400);
+            }, n === 3 ? 2200 : 800);
+          });
+        }
+
+        function valid(body) {
+          let ok = true;
+          for (const input of body.querySelectorAll('input[type="text"], textarea, select')) {
+            if (!input.value.trim()) ok = false;
+          }
+          const sal = body.querySelector('#q-sal');
+          if (sal && !/^\d+$/.test(sal.value.trim())) {
+            ok = false;
+            const hint = body.querySelector('#q-sal-h');
+            if (hint && !hint.querySelector('.err')) hint.insertAdjacentHTML('afterbegin', '<p class="err">Valor inválido</p>');
+          }
+          for (const group of body.querySelectorAll('fieldset[role="radiogroup"]')) {
+            if (!group.querySelector('input:checked')) ok = false;
+          }
+          return ok;
+        }
+
+        function submit(job, dlg) {
+          window.__submitted.push(job.id);
+          job.applied = true;
+          setTimeout(() => {
+            closeForm(dlg);
+            const post = document.createElement('dialog');
+            post.className = 'small-dlg';
+            post.setAttribute('open', '');
+            post.innerHTML = `<h2>Candidatura enviada</h2><p>Sua candidatura foi enviada para ${job.company}.</p><button type="button">Concluído</button>`;
+            document.body.append(post);
+            post.querySelector('button').addEventListener('click', () => post.remove());
+            job.card.insertAdjacentHTML('beforeend', '<div class="done">✓ Candidatura enviada</div>');
+            renderTop(job);
+          }, 600);
+        }
+      })();
+    </script>
+  </body>
+</html>

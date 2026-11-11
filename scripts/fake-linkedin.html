@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>LinkedIn (página de mentira para teste)</title>
+    <style>
+      body { font-family: sans-serif; display: flex; gap: 16px; margin: 12px; }
+      #list { width: 320px; }
+      #list [role='button'] { border: 1px solid #bbb; padding: 8px; margin: 6px 0; cursor: pointer; }
+      main { flex: 1; }
+      dialog { border: 1px solid #333; padding: 12px; max-width: 520px; }
+      .sr { position: absolute; clip: rect(0, 0, 0, 0); width: 1px; height: 1px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Página de mentira que imita a busca nova de vagas do LinkedIn, com os mesmos atrasos medidos na página real em
+      2026-11-10: ao clicar num cartão o painel mostra a vaga anterior por 0,4 s, fica VAZIO por 1,5 s e só então mostra
+      a vaga nova; o diálogo do formulário abre VAZIO e recebe o conteúdo depois; a troca de etapa passa por um instante
+      vazio; fechar o formulário abre o aviso "Salvar esta candidatura?" DEPOIS do formulário na página.
+      Serve para rodar a extensão de verdade, num Chrome de verdade, sem tocar no LinkedIn. Não prova o LinkedIn real.
+    -->
+    <div id="list"></div>
+    <main><div id="detail" data-sdui-screen="JobDetails"></div></main>
+    <script>
+      (() => {
+        const JOBS = [
+          { id: '4100000001', title: 'Analista Financeiro', company: 'Empresa Alfa', loc: 'São Paulo, SP (Híbrido)', extra: null },
+          { id: '4100000002', title: 'Arquiteto de Soluções', company: 'Empresa Beta', loc: 'Brasil (Remoto)', extra: null },
+          { id: '4100000003', title: 'Engenheiro de Dados', company: 'Empresa Gama', loc: 'Brasil (Remoto)', extra: 'cnh' },
+          { id: '4100000004', title: 'Tech Lead', company: 'Empresa Delta', loc: 'Brasil (Remoto)', extra: 'english' },
+        ];
+        const kept = (name, empty) => {
+          try {
+            return JSON.parse(sessionStorage.getItem(name) ?? 'null') ?? empty;
+          } catch {
+            return empty;
+          }
+        };
+        const keep = () => {
+          sessionStorage.setItem('submitted', JSON.stringify(window.__submitted));
+          sessionStorage.setItem('filled', JSON.stringify(window.__filled));
+          sessionStorage.setItem('headers', JSON.stringify(window.__headers));
+          sessionStorage.setItem('saved', JSON.stringify(window.__savedDraft));
+        };
+        window.__submitted = kept('submitted', []);
+        window.__filled = kept('filled', {});
+        window.__savedDraft = kept('saved', false);
+        window.__headers = kept('headers', []);
+        for (const job of JOBS) job.applied = window.__submitted.includes(job.id);
+        const searchUrl = location.pathname + location.search;
+        const list = document.getElementById('list');
+        const detail = document.getElementById('detail');
+
+        if (location.pathname.startsWith('/jobs/view/')) {
+          // Página de UMA vaga, de site externo: o botão é um link "Candidatar-se" e o único link para a vaga é a etiqueta "Remoto".
+          const id = location.pathname.split('/')[3];
+          detail.innerHTML = `<div><a href="/company/empresa-externa/">Empresa Externa</a><p>CTO (Cyber Security) - Remote Work</p>
+            <p>Curitiba e Região · Promovida por quem está contratando · Respostas gerenciadas fora do LinkedIn</p>
+            <a href="/jobs/view/${id}/">Remoto</a> <a href="https://externo.example/vaga">Candidatar-se</a> <button type="button">Salvar</button></div>
+            <h2>Sobre a vaga</h2><span>Texto da vaga.</span>`;
+          return;
+        }
+        if (!location.pathname.startsWith('/jobs/search')) {
+          // Um post do feed com link para uma vaga: NÃO é um cartão de vaga.
+          list.innerHTML = '<div><p>Fulano de Tal</p><a href="/jobs/view/4489000000/">Empresa Externa Curitiba e Região (Remoto) Ver vaga</a></div>';
+          return;
+        }
+
+        // A lista aparece 1 s depois de a página abrir.
+        setTimeout(() => {
+          for (const job of JOBS) {
+            const card = document.createElement('div');
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('componentkey', `job-card-component-ref-${job.id}`);
+            card.innerHTML = `<div><span aria-hidden="true">${job.title}</span><span class="sr">${job.title}</span></div>
+              <div>${job.company}</div><div>${job.loc}</div>
+              <button type="button">Fechar vaga de ${job.title}</button><div>Candidatura simplificada</div>${job.applied ? '<div>Candidatura enviada</div>' : ''}`;
+            card.addEventListener('click', (ev) => {
+              if (ev.target.closest('button')) return;
+              openJob(job);
+            });
+            job.card = card;
+            list.append(card);
+          }
+        }, 1000);
+
+        function openJob(job) {
+          history.replaceState(null, '', `${location.pathname}?currentJobId=${job.id}`);
+          setTimeout(() => {
+            detail.innerHTML = '';
+          }, 400);
+          setTimeout(() => renderTop(job), 1900);
+        }
+
+        function renderTop(job) {
+          detail.innerHTML = `<div><p><a href="/jobs/view/${job.id}/">${job.title}</a></p>
+            <div><a href="/company/${job.company.toLowerCase().replace(/\s+/g, '-')}/">${job.company}</a></div>
+            <div><span>${job.loc}</span></div>
+            <div>${
+              job.applied
+                ? '<span>Candidatura enviada</span>'
+                : '<button type="button" aria-label="Usar a candidatura simplificada para esta vaga"><span>Candidatura simplificada</span></button>'
+            }</div></div>
+            <h2>Sobre a vaga</h2><span data-testid="expandable-text-box">Atuação em projetos da empresa, com foco em entregas de qualidade.</span>`;
+          const btn = detail.querySelector('button');
+          if (btn) btn.addEventListener('click', () => openForm(job));
+        }
+
+        function openForm(job) {
+          const dlg = document.createElement('dialog');
+          dlg.setAttribute('data-testid', 'dialog');
+          dlg.setAttribute('aria-labelledby', 'dialog-header');
+          dlg.setAttribute('open', '');
+          dlg.innerHTML = `<button type="button" aria-label="Fechar">✕</button>
+            <div><header id="dialog-header"><h2>Candidate-se à empresa ${job.company}</h2></header><div id="form-body"></div></div>
+            <section><h2 data-testid="toasts-title">0 notificação</h2></section>`;
+          document.body.append(dlg);
+          window.__headers.push(`Candidate-se à empresa ${job.company}`);
+          keep();
+          history.replaceState(null, '', `/jobs/view/${job.id}/`);
+          dlg.querySelector('[aria-label="Fechar"]').addEventListener('click', () => askDiscard(dlg));
+          // O diálogo abre vazio; o conteúdo chega 0,9 s depois.
+          setTimeout(() => renderStep(job, dlg, 1), 900);
+        }
+
+        function askDiscard(form) {
+          if (document.getElementById('ask-discard')) return;
+          setTimeout(() => {
+            const ask = document.createElement('dialog');
+            ask.id = 'ask-discard';
+            ask.setAttribute('open', '');
+            ask.innerHTML = '<h2>Salvar esta candidatura?</h2><p>Salve para voltar depois.</p><button type="button">Descartar</button><button type="button">Salvar</button>';
+            form.after(ask);
+            const [discard, save] = ask.querySelectorAll('button');
+            discard.addEventListener('click', () => {
+              ask.remove();
+              form.remove();
+              // Como visto no LinkedIn real em 2026-11-11: depois de descartar, a aba volta para a página anterior (o feed).
+              setTimeout(() => location.assign('/feed/'), 400);
+            });
+            save.addEventListener('click', () => {
+              window.__savedDraft = true;
+              keep();
+            });
+          }, 300);
+        }
+
+        const yesNo = (name, question) => `<div componentkey="g"><p>${question}*</p><fieldset role="radiogroup">
+            <div componentkey="o"><div><div><input id="${name}-s" aria-label="${question}" type="radio" name="${name}"><label for="${name}-s"></label></div><div><p>Sim</p></div></div></div>
+            <div componentkey="o"><div><div><input id="${name}-n" aria-label="${question}" type="radio" name="${name}"><label for="${name}-n"></label></div><div><p>Não</p></div></div></div>
+          </fieldset></div>`;
+
+        function renderStep(job, dlg, n) {
+          const body = dlg.querySelector('#form-body');
+          if (!body || !dlg.isConnected) return;
+          const salaryQ = job.extra === 'english' ? 'Qual é a sua expectativa de remuneração mensal?' : 'Qual sua pretensão salarial?';
+          if (n === 1) {
+            body.innerHTML = `<p>1 de 4 páginas</p><p>Informações de contato</p>
+              <label for="em">E-mail</label><select id="em" required><option value="a@b.c" selected>a@b.c</option></select>
+              <label for="cc">Código do país</label><select id="cc" required><option value="br" selected>Brasil (+55)</option></select>
+              <label for="tel">Número de celular</label><input id="tel" type="tel" required value="11999990000">
+              <footer><button type="button">Avançar</button></footer>`;
+          } else if (n === 2) {
+            body.innerHTML = `<p>2 de 4 páginas</p><p>Currículo*</p>
+              <fieldset role="radiogroup"><input aria-label="curriculo.pdf" type="radio" name="resume-file" checked><input aria-label="curriculo-antigo.pdf" type="radio" name="resume-file"></fieldset>
+              <footer><button type="button">Voltar</button><button type="button">Avançar</button></footer>`;
+          } else if (n === 3) {
+            body.innerHTML = `<p>3 de 4 páginas</p><p>Perguntas adicionais</p>
+              <div><p>${salaryQ}*</p><div><input required id="q-sal" aria-describedby="q-sal-h" aria-label="${salaryQ}" type="text" value=""><div id="q-sal-h"><p><span>0/20</span></p></div></div></div>
+              ${yesNo('hib', 'Você trabalharia em um modelo híbrido?')}
+              <div><p>Há quantos anos você já usa Python no trabalho?*</p><div><input required id="q-py" aria-label="Há quantos anos você já usa Python no trabalho?" type="text" value=""></div></div>
+              ${job.extra === 'cnh' ? yesNo('cnh', 'Você possui CNH categoria B?') : ''}
+              ${
+                job.extra === 'english'
+                  ? '<div><p>Qual o seu nível de inglês?*</p><div><select id="q-en" aria-label="Qual o seu nível de inglês?" required><option value="">Selecione</option><option value="b">Básico</option><option value="i">Intermediário</option><option value="a">Avançado</option></select></div></div>'
+                  : ''
+              }
+              <footer><button type="button">Voltar</button><button type="button"><span><span>Avaliar</span></span></button></footer>`;
+          } else {
+            body.innerHTML = `<p>4 de 4 páginas</p><h3>Revise sua candidatura</h3>
+              <div><input id="follow" type="checkbox" checked aria-label="Siga a empresa ${job.company} para ficar por dentro das novidades"><label for="follow">Siga a empresa ${job.company} para ficar por dentro das novidades</label></div>
+              <footer><button type="button"><span><span>Enviar candidatura</span></span></button></footer>`;
+          }
+          const primary = [...body.querySelectorAll('footer button')].pop();
+          primary.addEventListener('click', () => {
+            if (n === 3 && !validateQuestions(job, body)) return;
+            if (n === 4) return submit(job, dlg, body);
+            body.innerHTML = '';
+            setTimeout(() => renderStep(job, dlg, n + 1), 300);
+          });
+        }
+
+        function validateQuestions(job, body) {
+          const sal = body.querySelector('#q-sal');
+          const py = body.querySelector('#q-py');
+          const hint = body.querySelector('#q-sal-h');
+          hint.querySelectorAll('.err').forEach((el) => el.remove());
+          let ok = true;
+          if (!/^\d+$/.test(sal.value.trim())) {
+            const err = document.createElement('p');
+            err.className = 'err';
+            err.textContent = 'Valor inválido';
+            hint.prepend(err);
+            ok = false;
+          }
+          if (!/^\d+$/.test(py.value.trim())) ok = false;
+          const picked = (name) => {
+            const el = body.querySelector(`input[name="${name}"]:checked`);
+            return el ? (el.id.endsWith('-s') ? 'Sim' : 'Não') : null;
+          };
+          if (!picked('hib')) ok = false;
+          if (job.extra === 'cnh' && !picked('cnh')) ok = false;
+          const en = body.querySelector('#q-en');
+          if (job.extra === 'english' && !en.value) ok = false;
+          if (ok) {
+            window.__filled[job.id] = { salary: sal.value, hybrid: picked('hib'), python: py.value, english: en ? en.selectedOptions[0].textContent : undefined };
+            keep();
+          }
+          return ok;
+        }
+
+        function submit(job, dlg, body) {
+          window.__filled[job.id] = { ...(window.__filled[job.id] || {}), follow: body.querySelector('#follow').checked };
+          window.__submitted.push(job.id);
+          job.applied = true;
+          keep();
+          setTimeout(() => {
+            dlg.remove();
+            const post = document.createElement('dialog');
+            post.setAttribute('open', '');
+            post.innerHTML = `<h2>Candidatura enviada</h2><p>Sua candidatura foi enviada para ${job.company}.</p><button type="button">Concluído</button>`;
+            document.body.append(post);
+            post.querySelector('button').addEventListener('click', () => post.remove());
+            history.replaceState(null, '', searchUrl);
+            const mark = document.createElement('div');
+            mark.textContent = 'Candidatura enviada';
+            job.card.append(mark);
+            renderTop(job);
+          }, 600);
+        }
+      })();
+    </script>
+  </body>
+</html>
